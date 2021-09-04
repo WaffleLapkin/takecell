@@ -1,4 +1,4 @@
-//! This crate provides a new cell-like type, `TakeCell`. A `TakeCell` might
+//! This crate provides a new cell-like type, `TakeCell`. A `TakeCell` may
 //! store arbitrary non-`Copy` types, can be read from at most once and provides
 //! direct unique access to the stored contents. The core API looks roughly like
 //! this (and there’s much more inside, read on!):
