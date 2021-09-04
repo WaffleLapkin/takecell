@@ -241,7 +241,7 @@ impl<T> From<T> for TakeCell<T> {
 }
 
 // TODO: is the `Send` bound required?
-unsafe impl<T: Send + Sync> Sync for TakeCell<T> {}
+unsafe impl<T: ?Sized + Send + Sync> Sync for TakeCell<T> {}
 
 // TODO: There may be a slightly different cell, which returns an owned value
 // instead of a reference (ie optimized version of `TakeCell<Option<T>>`)
