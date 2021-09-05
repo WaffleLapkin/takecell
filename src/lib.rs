@@ -240,8 +240,19 @@ impl<T> From<T> for TakeCell<T> {
     }
 }
 
-// TODO: is the `Send` bound required?
-unsafe impl<T: ?Sized + Send + Sync> Sync for TakeCell<T> {}
+/// ## Safety
+///
+/// It is possible to pass ownership via `&TakeCell`. As such, `TakeCell<T>` may
+/// be `Sync` (`TakeCell<T>: Send`) if and only if `T` is `Send`. Otherwise
+/// there may be UB, see [this example], adopted from sslab-gatech rust group.
+///
+/// [this example]: https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=c5add45a552290fc206fe2e9c768e03f
+///
+/// `Sync` on the other hand is not required because `TakeCell`'s value is only
+/// accesible from one thread at a time.
+///
+/// This is again similar to a `Mutex`.
+unsafe impl<T: ?Sized + Send> Sync for TakeCell<T> {}
 
 // TODO: There may be a slightly different cell, which returns an owned value
 // instead of a reference (ie optimized version of `TakeCell<Option<T>>`)
