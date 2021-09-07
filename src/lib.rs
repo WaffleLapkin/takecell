@@ -152,6 +152,15 @@ impl<T: ?Sized> TakeCell<T> {
     /// assert_eq!(value, 17);
     /// ```
     pub fn take(&self) -> Option<&mut T> {
+        // ## Safety
+        //
+        // Aside from `steal` (that is unsafe and it's caller must guarantee that there
+        // are no concurent calls to `steal`/`take`) this is the only place where we are
+        // changing the value of `self.taken`.
+        //
+        // Since this `compare_exchange` only changes the value from `false` to `true`,
+        // it can only succeed once. This guarantees that the returned reference is
+        // unique.
         match self
             .taken
             .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
