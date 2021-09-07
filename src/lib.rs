@@ -158,6 +158,9 @@ impl<T: ?Sized> TakeCell<T> {
         // are no concurent calls to `steal`/`take`) this is the only place where we are
         // changing the value of `self.taken`.
         //
+        // This is also the only place (again, aside from `steal`) where we use/provide
+        // a reference to the underlying value.
+        //
         // Since this `compare_exchange` only changes the value from `false` to `true`,
         // it can only succeed once. This guarantees that the returned reference is
         // unique.
@@ -194,7 +197,8 @@ impl<T: ?Sized> TakeCell<T> {
     ///
     /// [`take`]: TakeCell::take
     pub fn get(&mut self) -> &mut T {
-        // TODO: get_mut should be const too
+        // TODO: make `get` `const` when `UnsafeCell::get_mut` as `const fn`
+        // will be stabilized.
         self.value.get_mut()
     }
 
@@ -217,8 +221,10 @@ impl<T: ?Sized> TakeCell<T> {
     /// ```
     ///
     /// [`take`]: TakeCell::take
-
     pub fn heal(&mut self) {
+        // Unique reference to self guarantees that the reference retuened from
+        // `take`/`steal` (if these function were even called) is dead, thus it's okay
+        // to allow a new unique reference to the underlying value to be created.
         self.taken = AtomicBool::new(false);
     }
 
