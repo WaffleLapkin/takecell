@@ -192,9 +192,9 @@ impl<T: ?Sized> TakeCell<T> {
         self.taken.load(Ordering::SeqCst)
     }
 
-    /// Returns a mutable reference to the underlying data.
+    /// Returns a unique reference to the underlying data.
     ///
-    /// This call borrows `TakeCell` mutably (at compile-time) which guarantees
+    /// This call borrows `TakeCell` uniquely (at compile-time) which guarantees
     /// that we possess the only reference.
     ///
     /// Note that this function is not affected nor affects the [`take`]. ie
@@ -338,9 +338,9 @@ impl<T> TakeOwnCell<T> {
         self.0.is_taken()
     }
 
-    /// Returns a mutable reference to the underlying data.
+    /// Returns a unique reference to the underlying data.
     ///
-    /// This call borrows `TakeOwnCell` mutably (at compile-time) which
+    /// This call borrows `TakeOwnCell` uniquely (at compile-time) which
     /// guarantees that we possess the only reference.
     ///
     /// Note that this function does not affect the [`take`]. ie [`take`] may
@@ -415,8 +415,8 @@ impl<T> TakeOwnCell<T> {
 
         self.0.heal();
 
-        let mref = &mut *self.0.get();
-        (mref, res)
+        let uref = &mut *self.0.get();
+        (uref, res)
     }
 
     /// Unchecked version of [`take`].
