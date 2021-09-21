@@ -305,7 +305,10 @@ unsafe impl<T: ?Sized + Send> Sync for TakeCell<T> {}
 ///
 /// See [crate-level documentation](mod@self) for more.
 #[derive(Default)]
-pub struct TakeOwnCell<T>(TakeCell<ManuallyDrop<T>>);
+pub struct TakeOwnCell<T>(
+    // Invariant: `TakeCell::taken` is true <=> `ManuallyDrop`'s value was taken
+    TakeCell<ManuallyDrop<T>>,
+);
 
 impl<T> TakeOwnCell<T> {
     /// Creates a new `TakeOwnCell` containing the given value.
