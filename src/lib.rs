@@ -234,6 +234,28 @@ impl<T: ?Sized> TakeCell<T> {
         self.taken = AtomicBool::new(false);
     }
 
+    /// Similar to [`is_taken`], but uses unique reference instead of runtime
+    /// synchronization.
+    ///
+    /// [`is_taken`]: TakeCell::is_taken
+    pub fn is_taken_unsync(&mut self) -> bool {
+        *self.taken.get_mut()
+    }
+
+    /// Similar to [`take`], but uses unique reference instead of runtime
+    /// synchronization.
+    ///
+    /// [`take`]: TakeCell::take
+    pub fn take_unsync(&mut self) -> Option<&mut T> {
+        match self.is_taken_unsync() {
+            false => {
+                *self.taken.get_mut() = true;
+                Some(self.get())
+            }
+            true => None,
+        }
+    }
+
     /// Unchecked version of [`take`].
     ///
     /// ## Safety
@@ -364,8 +386,8 @@ impl<T> TakeOwnCell<T> {
     }
 
     /// Unwraps the underlying value.
-    pub fn into_inner(self) -> Option<T> {
-        self.take()
+    pub fn into_inner(mut self) -> Option<T> {
+        self.take_unsync()
     }
 
     /// Heal this cell. After a call to this function next call to [`take`] will
@@ -419,6 +441,33 @@ impl<T> TakeOwnCell<T> {
         (uref, res)
     }
 
+    /// Similar to [`is_taken`], but uses unique reference instead of runtime
+    /// synchronization.
+    ///
+    /// [`is_taken`]: TakeOwnCell::is_taken
+    pub fn is_taken_unsync(&mut self) -> bool {
+        self.0.is_taken_unsync()
+    }
+
+    /// Similar to [`take`], but uses unique reference instead of runtime
+    /// synchronization.
+    ///
+    /// [`take`]: TakeOwnCell::take
+    pub fn take_unsync(&mut self) -> Option<T> {
+        self.0
+            .take_unsync()
+            // ## Safety
+            //
+            // `TakeCell` guatantees that unique reference to the underlying value is returned only
+            // once before `TakeCell::heal`. We ensure a new value is emplaced if it was taken
+            // before calling `TakeCell::heal`.
+            //
+            // In all other places (like `drop` and `get`) we check if the value was taken.
+            //
+            // This guarantees that the value is not duplicated.
+            .map(|value| unsafe { ManuallyDrop::take(value) })
+    }
+
     /// Unchecked version of [`take`].
     ///
     /// ## Safety
@@ -461,12 +510,7 @@ unsafe impl<T: Send> Sync for TakeOwnCell<T> {}
 impl<T> Drop for TakeOwnCell<T> {
     fn drop(&mut self) {
         // Drop the underlying value, if the cell still holds it
-        if !self.0.is_taken() {
-            // ## Safety
-            //
-            // The value has not been taken, so it can be dropped
-            unsafe { ManuallyDrop::drop(self.0.get()) }
-        }
+        let _ = self.take_unsync();
     }
 }
 
