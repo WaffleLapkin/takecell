@@ -7,12 +7,12 @@
 //!     const fn new(v: T) -> Self { ... }
 //! }
 //! impl<T: ?Sized> TakeCell<T> {
-//!     fn get(&self) -> Option<&mut T> { ... }
+//!     fn take(&self) -> Option<&mut T> { ... }
 //! }
 //!
 //! impl<T> TakeOwnCell<T> {
 //!     const fn new(v: T) -> Self { ... }
-//!     fn get(&self) -> Option<T> { ... }
+//!     fn take(&self) -> Option<T> { ... }
 //! }
 //! ```
 //! Note that, like with `RefCell` and `Mutex`, the `take` method requires only
@@ -30,7 +30,7 @@
 //!
 //! ### Singletons
 //!
-//! `TakeCell` is `Sync` (when `T: Sync + Send`) and as such it may be used in
+//! `TakeCell` is `Sync` (when `T: Sync`) and as such it may be used in
 //! `static`s. This can be used to create singletons:
 //!
 //! ```

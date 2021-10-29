@@ -10,11 +10,11 @@ impl<T> TakeCell<T> {
     const fn new(v: T) -> Self { ... }
 }
 impl<T: ?Sized> TakeCell<T> {
-    fn get(&self) -> Option<&mut T> { ... }
+    fn take(&self) -> Option<&mut T> { ... }
 }
 
 impl<T> TakeOwnCell<T> {
     const fn new(v: T) -> Self { ... }
-    fn get(&self) -> Option<T> { ... }
+    fn take(&self) -> Option<T> { ... }
 }
 ```
