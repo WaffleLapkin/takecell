@@ -3,6 +3,17 @@ name = "takecell"
 version = "0.1.0"
 edition = "2018"
 
+description = "A cell type which value can only be taken once"
+
+readme = "./README.md"
+documentation = "https://docs.rs/takecell"
+repository = "https://github.com/wafflelapkin/takecell"
+
+license = "MIT"
+
+keywords = ["cell", "take"]
+categories = ["concurrency", "no-std", "rust-patterns"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
