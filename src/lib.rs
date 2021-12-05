@@ -170,7 +170,14 @@ impl<T: ?Sized> TakeCell<T> {
         // Since this `swap` only changes the value from `false` to `true`, it can only
         // return `false` once. This guarantees that the returned reference is
         // unique.
-        match self.taken.swap(true, Ordering::SeqCst) {
+        //
+        // `Relaxed` ordering is ok to use here, because when `TakeCell` is shared we
+        // only allow one (1) thread to access the protected memory, so there is no need
+        // to synchronize the memory between threads. When `TakeCell` is not shared and
+        // can be accessed with `get`, the thread that is holding `&mut TakeCell<_>`
+        // must have already synchronized itself with other threads so, again, there is
+        // no need for additional synchronization here.
+        match self.taken.swap(true, Ordering::Relaxed) {
             // The cell was previously taken
             true => None,
             // The cell wasn't takes before, so we can take it
@@ -188,7 +195,7 @@ impl<T: ?Sized> TakeCell<T> {
     ///
     /// [`take`]: TakeCell::take
     pub fn is_taken(&self) -> bool {
-        self.taken.load(Ordering::SeqCst)
+        self.taken.load(Ordering::Relaxed)
     }
 
     /// Returns a unique reference to the underlying data.
@@ -267,7 +274,7 @@ impl<T: ?Sized> TakeCell<T> {
     /// [`heal`]: TakeCell::heal
     #[allow(clippy::mut_from_ref)]
     pub unsafe fn steal(&self) -> &mut T {
-        self.taken.store(true, Ordering::SeqCst);
+        self.taken.store(true, Ordering::Relaxed);
 
         // ## Safety
         //
