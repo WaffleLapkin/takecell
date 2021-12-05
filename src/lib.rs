@@ -167,15 +167,14 @@ impl<T: ?Sized> TakeCell<T> {
         // This is also the only place (again, aside from `steal`) where we use/provide
         // a reference to the underlying value.
         //
-        // Since this `compare_exchange` only changes the value from `false` to `true`,
-        // it can only succeed once. This guarantees that the returned reference is
+        // Since this `swap` only changes the value from `false` to `true`, it can only
+        // return `false` once. This guarantees that the returned reference is
         // unique.
-        match self
-            .taken
-            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-        {
-            Ok(_) => Some(unsafe { &mut *self.value.get() }),
-            Err(_) => None,
+        match self.taken.swap(true, Ordering::SeqCst) {
+            // The cell was previously taken
+            true => None,
+            // The cell wasn't takes before, so we can take it
+            false => Some(unsafe { &mut *self.value.get() }),
         }
     }
 
