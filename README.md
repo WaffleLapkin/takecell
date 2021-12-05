@@ -21,3 +21,10 @@ impl<T> TakeOwnCell<T> {
     fn take(&self) -> Option<T> { ... }
 }
 ```
+
+To use this crate add the following to your `Cargo.toml`:
+
+```toml
+[dependencies] 
+kiam = "0.1"
+```
