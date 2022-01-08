@@ -26,5 +26,5 @@ To use this crate add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies] 
-kiam = "0.1"
+takecell = "0.1"
 ```
