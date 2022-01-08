@@ -171,12 +171,19 @@ impl<T: ?Sized> TakeCell<T> {
         // return `false` once. This guarantees that the returned reference is
         // unique.
         //
+        // Two threads can't both swap false->true, this is guaranteed by the
+        // specification:
+        // > All modifications to any particular atomic variable
+        // > occur in a total order that is specific to this one atomic variable.
+        // > <https://en.cppreference.com/w/cpp/atomic/memory_order>
+        //
         // `Relaxed` ordering is ok to use here, because when `TakeCell` is shared we
         // only allow one (1) thread to access the protected memory, so there is no need
         // to synchronize the memory between threads. When `TakeCell` is not shared and
         // can be accessed with `get`, the thread that is holding `&mut TakeCell<_>`
         // must have already synchronized itself with other threads so, again, there is
-        // no need for additional synchronization here.
+        // no need for additional synchronization here. See also:
+        // <https://discord.com/channels/500028886025895936/628283088555737089/929435782370955344>.
         match self.taken.swap(true, Ordering::Relaxed) {
             // The cell was previously taken
             true => None,
