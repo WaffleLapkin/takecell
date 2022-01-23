@@ -167,15 +167,28 @@ impl<T: ?Sized> TakeCell<T> {
         // This is also the only place (again, aside from `steal`) where we use/provide
         // a reference to the underlying value.
         //
-        // Since this `compare_exchange` only changes the value from `false` to `true`,
-        // it can only succeed once. This guarantees that the returned reference is
+        // Since this `swap` only changes the value from `false` to `true`, it can only
+        // return `false` once. This guarantees that the returned reference is
         // unique.
-        match self
-            .taken
-            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-        {
-            Ok(_) => Some(unsafe { &mut *self.value.get() }),
-            Err(_) => None,
+        //
+        // Two threads can't both swap false->true, this is guaranteed by the
+        // specification:
+        // > All modifications to any particular atomic variable
+        // > occur in a total order that is specific to this one atomic variable.
+        // > <https://en.cppreference.com/w/cpp/atomic/memory_order>
+        //
+        // `Relaxed` ordering is ok to use here, because when `TakeCell` is shared we
+        // only allow one (1) thread to access the protected memory, so there is no need
+        // to synchronize the memory between threads. When `TakeCell` is not shared and
+        // can be accessed with `get`, the thread that is holding `&mut TakeCell<_>`
+        // must have already synchronized itself with other threads so, again, there is
+        // no need for additional synchronization here. See also:
+        // <https://discord.com/channels/500028886025895936/628283088555737089/929435782370955344>.
+        match self.taken.swap(true, Ordering::Relaxed) {
+            // The cell was previously taken
+            true => None,
+            // The cell wasn't takes before, so we can take it
+            false => Some(unsafe { &mut *self.value.get() }),
         }
     }
 
@@ -189,7 +202,7 @@ impl<T: ?Sized> TakeCell<T> {
     ///
     /// [`take`]: TakeCell::take
     pub fn is_taken(&self) -> bool {
-        self.taken.load(Ordering::SeqCst)
+        self.taken.load(Ordering::Relaxed)
     }
 
     /// Returns a unique reference to the underlying data.
@@ -268,7 +281,7 @@ impl<T: ?Sized> TakeCell<T> {
     /// [`heal`]: TakeCell::heal
     #[allow(clippy::mut_from_ref)]
     pub unsafe fn steal(&self) -> &mut T {
-        self.taken.store(true, Ordering::SeqCst);
+        self.taken.store(true, Ordering::Relaxed);
 
         // ## Safety
         //
