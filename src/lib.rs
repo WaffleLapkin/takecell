@@ -104,9 +104,9 @@
 #![no_std]
 use core::{
     cell::UnsafeCell,
-    mem::ManuallyDrop,
     sync::atomic::{AtomicBool, Ordering},
 };
+use maybe_dangling::ManuallyDrop;
 
 /// A cell type which value can be taken only once.
 ///
@@ -320,6 +320,8 @@ unsafe impl<T: ?Sized + Send> Sync for TakeCell<T> {}
 #[derive(Default)]
 pub struct TakeOwnCell<T>(
     // Invariant: `TakeCell::taken` is true <=> `ManuallyDrop`'s value was taken
+    // Note that we're using `ManuallyDrop` from the `maybe-dangling` crate,
+    // in order to avoid the unsoundness in https://github.com/WaffleLapkin/takecell/issues/5
     TakeCell<ManuallyDrop<T>>,
 );
 
@@ -602,6 +604,8 @@ mod tests {
 #[cfg(test)]
 mod own_tests {
     use crate::TakeOwnCell;
+    extern crate alloc;
+    use alloc::boxed::Box;
 
     #[test]
     fn it_works() {
@@ -658,5 +662,20 @@ mod own_tests {
         assert!(cell.is_taken());
         assert!(cell.take().is_none());
         assert!(cell.into_inner().is_none());
+    }
+
+    // Moving an empty `TakeOwnCell` should not assert validity or ownership
+    // of its former contents.
+    // See https://github.com/WaffleLapkin/takecell/issues/5
+    #[test]
+    fn maybe_dangling() {
+        let cell = TakeOwnCell::new(Box::new(1));
+        let data = cell.take().unwrap();
+        // Moving the cell does not invalidate the data
+        let cell = cell;
+        assert_eq!(*data, 1);
+        // Dropping the data does not invalidate the cell
+        drop(data);
+        let _cell = cell;
     }
 }

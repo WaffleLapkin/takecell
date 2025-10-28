@@ -17,6 +17,7 @@ categories = ["concurrency", "no-std", "rust-patterns"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+maybe-dangling = "0.1.2"
 
 [dev-dependencies]
 once_cell = "1.8.0"
