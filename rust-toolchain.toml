@@ -1,4 +1,4 @@
 [toolchain]
-channel = "1.97"
+channel = "nightly"
 profile = "minimal"
-components = ["rustfmt", "rust-analyzer", "rust-src"]
+components = ["rustfmt", "rust-analyzer", "rust-src", "miri"]
