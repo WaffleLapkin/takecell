@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> This crate moved to a different forge. You can find new versions at <https://git.gay/wffl/takecell/>.
+
 # takecell
 
 [![lib.rs](https://img.shields.io/badge/lib.rs-%20-8844ff)](https://lib.rs/crates/takecell)
