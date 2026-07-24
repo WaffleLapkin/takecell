@@ -3,6 +3,17 @@ name = "takecell"
 version = "0.1.1"
 edition = "2018"
 
+# `1.96.0` fixed a "bug in the language" which made moving dropped `ManuallyDrop<Box<...>>` UB.
+# Such UB can be triggered from safe code using this crate, as it provides a safe API around
+# `ManuallyDrop`.
+#
+# waffle: In `1.96.0` I fixed the issue, so starting from that version `takecell` is sound again :3
+#
+# See
+# - https://github.com/WaffleLapkin/takecell/issues/3
+# - https://github.com/WaffleLapkin/takecell/issues/5
+rust-version = "1.96"
+
 description = "A cell type which value can only be taken once"
 
 readme = "./README.md"
