@@ -104,7 +104,7 @@
 #![no_std]
 use core::{
     cell::UnsafeCell,
-    mem::ManuallyDrop,
+    mem::{self, replace, ManuallyDrop},
     sync::atomic::{AtomicBool, Ordering},
 };
 
@@ -318,15 +318,18 @@ unsafe impl<T: ?Sized + Send> Sync for TakeCell<T> {}
 ///
 /// See [crate-level documentation](mod@self) for more.
 #[derive(Default)]
-pub struct TakeOwnCell<T>(
-    // Invariant: `TakeCell::taken` is true <=> `ManuallyDrop`'s value was taken
-    TakeCell<ManuallyDrop<T>>,
-);
+pub struct TakeOwnCell<T> {
+    taken: AtomicBool,
+    value: ManuallyDrop<T>,
+}
 
 impl<T> TakeOwnCell<T> {
     /// Creates a new `TakeOwnCell` containing the given value.
     pub const fn new(v: T) -> Self {
-        Self(TakeCell::new(ManuallyDrop::new(v)))
+        Self {
+            taken: AtomicBool::new(false),
+            value: ManuallyDrop::new(v),
+        }
     }
 
     /// Returns the underlying value.
@@ -350,18 +353,17 @@ impl<T> TakeOwnCell<T> {
     /// assert!(cell.into_inner().is_none());
     /// ```
     pub fn take(&self) -> Option<T> {
-        self.0
-            .take()
+        match self.taken.swap(true, Ordering::Relaxed) {
+            // The cell was previously taken
+            true => None,
+            // The cell wasn't taken before, so we can take it
+            //
             // ## Safety
             //
-            // `TakeCell` guatantees that unique reference to the underlying value is returned only
-            // once before `TakeCell::heal`. We ensure a new value is emplaced if it was taken
-            // before calling `TakeCell::heal`.
-            //
-            // In all other places (like `drop` and `get`) we check if the value was taken.
-            //
-            // This guarantees that the value is not duplicated.
-            .map(|value| unsafe { ManuallyDrop::take(value) })
+            // We guarantee that `value` has not been copied yet if `taken` is false.
+            // So by setting `taken` to `true` above, we know that this is the only copy.
+            false => Some(unsafe { mem::transmute_copy(&self.value) }),
+        }
     }
 
     /// Returns `true` if the underlying value has been already [`take`]n.
@@ -373,7 +375,7 @@ impl<T> TakeOwnCell<T> {
     ///
     /// [`take`]: TakeOwnCell::take
     pub fn is_taken(&self) -> bool {
-        self.0.is_taken()
+        self.taken.load(Ordering::Relaxed)
     }
 
     /// Returns a unique reference to the underlying data.
@@ -395,7 +397,7 @@ impl<T> TakeOwnCell<T> {
                 // blocks (see: `take`).
                 //
                 // The value may only be accessed if it was not taken before.
-                Some(&mut *self.0.get())
+                Some(&mut self.value)
             }
             true => None,
         }
@@ -440,20 +442,24 @@ impl<T> TakeOwnCell<T> {
         // While this code doesn't use `unsafe{}` it can be affected by other unsafe
         // blocks (see: `take`).
         //
-        // The value must be emplaced if it was previously taken, before healing the
-        // underlying cell.
-
-        let res = match self.0.is_taken() {
+        // The value must be emplaced if it was previously taken, before resetting `taken` to `false`.
+        let res = match self.is_taken_unsync() {
             true => {
-                *self.0.get() = ManuallyDrop::new(v);
+                self.value = ManuallyDrop::new(v);
+                *self.taken.get_mut() = false;
                 Ok(())
             }
             false => Err(v),
         };
 
-        self.0.heal();
-
-        let uref = &mut *self.0.get();
+        // ## Safety
+        //
+        // While this code doesn't use `unsafe{}` it can be affected by other unsafe
+        // blocks (see: `take`).
+        //
+        // The value may only be accessed if it was not taken before.
+        // We have guaranteed this in the code above.
+        let uref = &mut *self.value;
         (uref, res)
     }
 
@@ -462,7 +468,7 @@ impl<T> TakeOwnCell<T> {
     ///
     /// [`is_taken`]: TakeOwnCell::is_taken
     pub fn is_taken_unsync(&mut self) -> bool {
-        self.0.is_taken_unsync()
+        *self.taken.get_mut()
     }
 
     /// Similar to [`take`], but uses unique reference instead of runtime
@@ -470,18 +476,17 @@ impl<T> TakeOwnCell<T> {
     ///
     /// [`take`]: TakeOwnCell::take
     pub fn take_unsync(&mut self) -> Option<T> {
-        self.0
-            .take_unsync()
+        match replace(self.taken.get_mut(), true) {
+            // The cell was previously taken
+            true => None,
+            // The cell wasn't taken before, so we can take it
+            //
             // ## Safety
             //
-            // `TakeCell` guatantees that unique reference to the underlying value is returned only
-            // once before `TakeCell::heal`. We ensure a new value is emplaced if it was taken
-            // before calling `TakeCell::heal`.
-            //
-            // In all other places (like `drop` and `get`) we check if the value was taken.
-            //
-            // This guarantees that the value is not duplicated.
-            .map(|value| unsafe { ManuallyDrop::take(value) })
+            // We guarantee that `value` has not been copied yet if `taken` is false.
+            // So by setting `taken` to `true` above, we know that this is the only copy.
+            false => Some(unsafe { mem::transmute_copy(&self.value) }),
+        }
     }
 
     /// Unchecked version of [`take`].
@@ -495,10 +500,12 @@ impl<T> TakeOwnCell<T> {
     /// [`steal`]: TakeOwnCell::steal
     /// [`heal`]: TakeOwnCell::heal
     pub unsafe fn steal(&self) -> T {
+        self.taken.store(true, Ordering::Relaxed);
+
         // ## Safety
         //
         // Guaranteed by the caller
-        ManuallyDrop::take(self.0.steal())
+        mem::transmute_copy(&self.value)
     }
 }
 
