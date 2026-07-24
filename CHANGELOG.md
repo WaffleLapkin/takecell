@@ -1,5 +1,7 @@
 ## Unreleased
 
+## 0.1.2
+
 - Make `TakeOwnCell<T>` covariant in `T` (https://github.com/WaffleLapkin/takecell/pull/7)
 - Set MSRV to `1.96`
 
