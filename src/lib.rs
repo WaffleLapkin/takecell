@@ -104,7 +104,7 @@
 #![no_std]
 use core::{
     cell::UnsafeCell,
-    mem::{self, replace, ManuallyDrop},
+    mem::{self, ManuallyDrop, replace},
     sync::atomic::{AtomicBool, Ordering},
 };
 
@@ -286,7 +286,7 @@ impl<T: ?Sized> TakeCell<T> {
         // ## Safety
         //
         // Guaranteed by the caller
-        &mut *self.value.get()
+        unsafe { &mut *self.value.get() }
     }
 }
 
@@ -442,7 +442,8 @@ impl<T> TakeOwnCell<T> {
         // While this code doesn't use `unsafe{}` it can be affected by other unsafe
         // blocks (see: `take`).
         //
-        // The value must be emplaced if it was previously taken, before resetting `taken` to `false`.
+        // The value must be emplaced if it was previously taken, before resetting
+        // `taken` to `false`.
         let res = match self.is_taken_unsync() {
             true => {
                 self.value = ManuallyDrop::new(v);
@@ -505,7 +506,7 @@ impl<T> TakeOwnCell<T> {
         // ## Safety
         //
         // Guaranteed by the caller
-        mem::transmute_copy(&self.value)
+        unsafe { mem::transmute_copy(&self.value) }
     }
 }
 
