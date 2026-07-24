@@ -1,6 +1,6 @@
 [package]
 name = "takecell"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 
 # `1.96.0` fixed a "bug in the language" which made moving dropped `ManuallyDrop<Box<...>>` UB.
